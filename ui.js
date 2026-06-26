@@ -138,10 +138,10 @@
   function cache() {
     [
       "screen-splash", "screen-menu", "screen-levels", "screen-game", "screen-shop", "screen-intro",
-      "board", "remaining-count", "game-level-label", "hint-count", "hearts",
-      "btn-sound", "btn-menu-sound", "levels-grid", "toast",
+      "board", "board-wrap", "remaining-count", "game-level-label", "hint-count", "hearts",
+      "btn-sound", "btn-menu-sound", "btn-guide", "btn-zoom", "levels-grid", "toast",
       // settings inputs
-      "set-sound", "set-music", "set-dark", "set-contrast", "set-colorblind",
+      "set-sound", "set-music", "set-guide", "set-dark", "set-contrast", "set-colorblind",
       // victory
       "victory-time", "victory-moves", "victory-stars",
       "victory-coin-amount", "victory-reward-breakdown", "victory-total-amount", "victory-perfect-badge", "victory-reward-total",
@@ -245,10 +245,47 @@
     const s = Player.settings;
     el["set-sound"].checked = s.sound;
     el["set-music"].checked = s.music;
+    el["set-guide"].checked = s.guide;
     el["set-dark"].checked = s.dark;
     el["set-contrast"].checked = s.contrast;
     el["set-colorblind"].checked = s.colorblind;
     refreshSoundIcons();
+    refreshGuideButton();
+  }
+
+  function refreshGuideButton() {
+    const btn = el["btn-guide"];
+    if (btn) btn.classList.toggle("active", !!Player.settings.guide);
+  }
+
+  function toggleGuide() {
+    Player.settings.guide = !Player.settings.guide;
+    AP.applySettings();
+    refreshGuideButton();
+    AP.audio.play("button");
+    toast(Player.settings.guide ? "Guide on" : "Guide off");
+  }
+
+  function toggleZoom() {
+    const wrap = el["board-wrap"];
+    if (!wrap) return;
+    const isZoomed = wrap.classList.toggle("zoomed");
+    const btn = el["btn-zoom"];
+    if (btn) btn.classList.toggle("active", isZoomed);
+    AP.audio.play("button");
+    toast(isZoomed ? "Zoomed in" : "Zoomed out");
+  }
+
+  function setZoomVisible(visible) {
+    const btn = el["btn-zoom"];
+    if (btn) btn.style.display = visible ? "" : "none";
+  }
+
+  function resetZoom() {
+    const wrap = el["board-wrap"];
+    if (wrap) wrap.classList.remove("zoomed");
+    const btn = el["btn-zoom"];
+    if (btn) btn.classList.remove("active");
   }
 
   /* ---------- coins ---------- */
@@ -771,11 +808,14 @@
 
     // Game bottom bar
     $("btn-restart").addEventListener("click", () => { AP.audio.play("button"); AP.game.restart(); });
+    $("btn-guide").addEventListener("click", toggleGuide);
+    $("btn-zoom").addEventListener("click", toggleZoom);
     $("btn-hint").addEventListener("click", () => AP.game.hint());
 
     // Settings toggles
     el["set-sound"].addEventListener("change", (e) => { Player.settings.sound = e.target.checked; AP.applySettings(); refreshSoundIcons(); AP.audio.play("button"); });
     el["set-music"].addEventListener("change", (e) => { Player.settings.music = e.target.checked; AP.applySettings(); });
+    el["set-guide"].addEventListener("change", (e) => { Player.settings.guide = e.target.checked; AP.applySettings(); refreshGuideButton(); });
     el["set-dark"].addEventListener("change", (e) => { Player.settings.dark = e.target.checked; AP.applySettings(); });
     el["set-contrast"].addEventListener("change", (e) => { Player.settings.contrast = e.target.checked; AP.applySettings(); });
     el["set-colorblind"].addEventListener("change", (e) => { Player.settings.colorblind = e.target.checked; AP.applySettings(); });
@@ -857,5 +897,6 @@
     setRemaining, setLevelLabel, setHintCount, setUndoEnabled, setHearts,
     refreshSoundIcons, syncSettingsInputs, renderStats, buildLevels,
     showVictory, renderShop, startCelebration, isCelebrating: isCelebratingActive,
+    setZoomVisible, resetZoom, refreshGuideButton,
   };
 })(window.AP = window.AP || {});

@@ -217,10 +217,20 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   flex: 1; display: flex; align-items: center; justify-content: center;
   width: 100%; min-height: 0; padding: 6px 0;
 }
+.board-wrap.zoomed {
+  display: block;
+  overflow: auto;
+}
 .board {
   display: block; position: relative;
   width: min(92vw, 60vh, 540px);
   aspect-ratio: 1 / 1;
+  transition: width 0.25s var(--ease-out), margin 0.25s var(--ease-out);
+}
+.board-wrap.zoomed .board {
+  width: calc(min(92vw, 60vh, 540px) * var(--zoom-factor, 1.6));
+  max-width: none;
+  margin: 40px auto;
 }
 
 /* Guide overlay (BELOW the arrows). The cell-centre dots outline the puzzle shape. */
@@ -229,6 +239,16 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   pointer-events: none;
 }
 .guide .guide-dots circle { fill: var(--guide-dot); }
+.guide .guide-lines rect {
+  fill: none;
+  stroke: var(--guide-line);
+  stroke-width: 0.02;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease-out);
+}
+[data-guide="on"] .guide .guide-lines rect {
+  opacity: 1;
+}
 
 /* Board-sized overlay SVG ABOVE the arrows: the slither-off animation. */
 .board-fx {

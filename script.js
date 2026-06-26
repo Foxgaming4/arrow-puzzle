@@ -61,6 +61,7 @@
     root.dataset.theme = s.dark ? "dark" : "light";
     root.dataset.contrast = s.contrast ? "high" : "normal";
     root.dataset.colorblind = s.colorblind ? "on" : "off";
+    root.dataset.guide = s.guide ? "on" : "off";
     AP.audio.setSound(s.sound);
     AP.audio.setMusic(s.music);
     Player.save();
@@ -303,7 +304,7 @@
     board.appendChild(svg);
   }
 
-  /* ---------- Guide Grid (Blueprint Dots Only) ---------- */
+  /* ---------- Guide Grid (Blueprint Dots and Lines) ---------- */
   // Built once per board (cached as static DOM) to outline the shape of the puzzle level.
   function buildGuide(N) {
     const svg = document.createElementNS(SVGNS, "svg");
@@ -311,17 +312,38 @@
     svg.setAttribute("viewBox", "0 0 " + N + " " + N);
     svg.setAttribute("aria-hidden", "true");
 
-    // a dot at the centre of each cell that belongs to the shape
     const mask = game.mask;
+    
+    // 1) Grid lines (rect outlines) for each cell in the shape
+    const lines = document.createElementNS(SVGNS, "g");
+    lines.setAttribute("class", "guide-lines");
+    
+    // 2) A dot at the centre of each cell that belongs to the shape
     const dots = document.createElementNS(SVGNS, "g");
     dots.setAttribute("class", "guide-dots");
-    for (let r = 0; r < N; r++)
+    
+    for (let r = 0; r < N; r++) {
       for (let c = 0; c < N; c++) {
         if (mask && !mask.has(r * N + c)) continue;
+        
+        // Add grid box outline
+        const rect = document.createElementNS(SVGNS, "rect");
+        rect.setAttribute("x", c);
+        rect.setAttribute("y", r);
+        rect.setAttribute("width", 1);
+        rect.setAttribute("height", 1);
+        lines.appendChild(rect);
+        
+        // Add center dot
         const dot = document.createElementNS(SVGNS, "circle");
-        dot.setAttribute("cx", c + 0.5); dot.setAttribute("cy", r + 0.5); dot.setAttribute("r", 0.04);
+        dot.setAttribute("cx", c + 0.5); 
+        dot.setAttribute("cy", r + 0.5); 
+        dot.setAttribute("r", 0.04);
         dots.appendChild(dot);
       }
+    }
+    
+    svg.appendChild(lines);
     svg.appendChild(dots);
 
     game.guideSvg = svg;
@@ -671,6 +693,14 @@
     AP.ui.setHintCount(game.hintsLeft);
     AP.ui.setHearts(game.hearts, game.maxHearts);
     AP.ui.setUndoEnabled(game.undoStack.length > 0);
+
+    // Zoom: reset state and show button only for large boards
+    AP.ui.resetZoom();
+    AP.ui.setZoomVisible(cfg.size >= 10);
+
+    // Sync guide button active state
+    AP.ui.refreshGuideButton();
+
     saveProgress();
   }
 

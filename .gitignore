@@ -6,3 +6,5 @@ Thumbs.db
 .agents/
 .qodo/
 .claude/
+
+.vercel

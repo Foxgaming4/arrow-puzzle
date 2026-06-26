@@ -15,7 +15,7 @@
 
   const HINTS_PER_LEVEL = 3;
   const HEARTS = 3;
-  const TOTAL_LEVELS = 60;
+  const TOTAL_LEVELS = 120;
 
   // Order tuned so the simplest silhouettes appear on the smallest early grids.
   const SHAPE_CYCLE = ["full", "diamond", "circle", "heart", "star", "triangle", "hexagon", "apple", "plus"];
@@ -81,17 +81,23 @@
       turnProb = 0.0;   // No winding, all straight
     } else if (level <= 30) {
       // Medium Levels (11-30)
-      size = level <= 20 ? 6 : 7;
-      maxLen = level <= 20 ? 3 : 4;
+      if (level <= 15) { size = 7; maxLen = 3; }
+      else if (level <= 20) { size = 8; maxLen = 3; }
+      else if (level <= 25) { size = 9; maxLen = 4; }
+      else { size = 10; maxLen = 4; }
       turnProb = 0.25;  // Occasional turns
     } else if (level <= 60) {
       // Advanced Levels (31-60)
-      size = level <= 45 ? 8 : 9;
+      if (level <= 40) size = 10;
+      else if (level <= 50) size = 12;
+      else size = 14;
       maxLen = 5;       // Winding paths
       turnProb = 0.6;   // High turns
     } else {
       // Expert Levels (61+)
-      size = 10;        // Capped at 10 to fit well on mobile/desktop
+      if (level <= 80) size = 15;
+      else if (level <= 100) size = 16;
+      else size = 20;
       maxLen = 6;
       turnProb = 0.8;   // Intertwined paths
     }

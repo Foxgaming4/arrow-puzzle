@@ -109,6 +109,7 @@
         settings: {
           sound: true,
           music: false,
+          guide: false,
           dark: prefersDark(),
           contrast: false,
           colorblind: false,
@@ -194,6 +195,7 @@
     out.profile.settings = {
       sound: bool(s.sound, ds.sound),
       music: bool(s.music, ds.music),
+      guide: bool(s.guide, ds.guide),
       dark: bool(s.dark, ds.dark),
       contrast: bool(s.contrast, ds.contrast),
       colorblind: bool(s.colorblind, ds.colorblind),
