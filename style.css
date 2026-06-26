@@ -994,23 +994,6 @@ kbd { background: var(--surface-2); border: 1px solid var(--border); border-radi
    Daily Challenge Styles
    =================================================================== */
 
-/* ---------- Daily glow button on main menu ---------- */
-.btn-daily-glow {
-  position: relative;
-  overflow: hidden;
-  border: 1.5px solid rgba(255, 179, 0, 0.25);
-}
-.btn-daily-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 193, 75, 0.08), rgba(255, 160, 0, 0.04));
-  pointer-events: none;
-}
-.btn-daily-glow .ico {
-  color: #F59E0B;
-}
-
 /* ---------- Daily Challenge Screen ---------- */
 #screen-daily { align-items: center; }
 .daily-inner {
@@ -1051,10 +1034,14 @@ kbd { background: var(--surface-2); border: 1px solid var(--border); border-radi
 .diff-medium { background: rgba(245, 158, 11, 0.12); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.3); }
 .diff-hard { background: rgba(239, 68, 68, 0.12); color: #DC2626; border: 1px solid rgba(239, 68, 68, 0.3); }
 .diff-expert { background: rgba(139, 92, 246, 0.12); color: #7C3AED; border: 1px solid rgba(139, 92, 246, 0.3); }
+.diff-master { background: rgba(236, 72, 153, 0.12); color: #DB2777; border: 1px solid rgba(236, 72, 153, 0.3); }
+.diff-extreme { background: rgba(255, 59, 48, 0.15); color: #FF3B30; border: 1px solid rgba(255, 59, 48, 0.4); }
 [data-theme="dark"] .diff-easy { color: #34D399; }
 [data-theme="dark"] .diff-medium { color: #FBBF24; }
 [data-theme="dark"] .diff-hard { color: #F87171; }
 [data-theme="dark"] .diff-expert { color: #A78BFA; }
+[data-theme="dark"] .diff-master { color: #F472B6; }
+[data-theme="dark"] .diff-extreme { color: #FF6961; }
 .daily-players {
   font-size: 0.82rem;
   color: var(--text-soft);

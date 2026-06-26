@@ -94,13 +94,13 @@
     const dateKey = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
     const dow = d.getUTCDay();
     const SHAPES = ["full","diamond","circle","heart","star","triangle","hexagon","apple","plus"];
-    const difficulties = ["Easy","Easy","Medium","Medium","Hard","Hard","Expert"];
+    const difficulties = ["Hard","Hard","Expert","Expert","Master","Master","Extreme"];
 
     let size, maxLen, turnProb;
-    if (dow <= 1)      { size = 6;  maxLen = 3; turnProb = 0.2; }
-    else if (dow <= 3) { size = 8;  maxLen = 4; turnProb = 0.4; }
-    else if (dow <= 5) { size = 10; maxLen = 5; turnProb = 0.6; }
-    else               { size = 12; maxLen = 5; turnProb = 0.7; }
+    if (dow <= 1)      { size = 15; maxLen = 5; turnProb = 0.5; }
+    else if (dow <= 3) { size = 16; maxLen = 6; turnProb = 0.6; }
+    else if (dow <= 5) { size = 18; maxLen = 6; turnProb = 0.65; }
+    else               { size = 20; maxLen = 7; turnProb = 0.7; }
 
     const tomorrow = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
     return {

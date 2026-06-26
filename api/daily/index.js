@@ -5,7 +5,7 @@
    so every player worldwide gets the exact same board each day.
    =================================================================== */
 
-const { kv } = require("@vercel/kv");
+const { kv } = require("./_store");
 
 function todayKey() {
   const d = new Date();
@@ -24,17 +24,17 @@ function getDailyConfig(dateKey) {
   const SHAPES = ["full", "diamond", "circle", "heart", "star", "triangle", "hexagon", "apple", "plus"];
 
   let size, maxLen, turnProb;
-  if (dow <= 1) {        // Sun-Mon: Easy
-    size = 6; maxLen = 3; turnProb = 0.2;
-  } else if (dow <= 3) { // Tue-Wed: Medium
-    size = 8; maxLen = 4; turnProb = 0.4;
-  } else if (dow <= 5) { // Thu-Fri: Hard
-    size = 10; maxLen = 5; turnProb = 0.6;
-  } else {               // Sat: Expert
-    size = 12; maxLen = 5; turnProb = 0.7;
+  if (dow <= 1) {        // Sun-Mon: Hard
+    size = 15; maxLen = 5; turnProb = 0.5;
+  } else if (dow <= 3) { // Tue-Wed: Expert
+    size = 16; maxLen = 6; turnProb = 0.6;
+  } else if (dow <= 5) { // Thu-Fri: Master
+    size = 18; maxLen = 6; turnProb = 0.65;
+  } else {               // Sat: Extreme
+    size = 20; maxLen = 7; turnProb = 0.7;
   }
 
-  const difficulties = ["Easy", "Easy", "Medium", "Medium", "Hard", "Hard", "Expert"];
+  const difficulties = ["Hard", "Hard", "Expert", "Expert", "Master", "Master", "Extreme"];
   const shape = SHAPES[dateKey % SHAPES.length];
   const seed = (dateKey * 2654435761) >>> 0;
 
