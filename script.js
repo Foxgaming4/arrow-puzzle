@@ -186,6 +186,55 @@
     busy: false,
   };
 
+  /* ---------- timer management ---------- */
+  let timerInterval = null;
+  let timerPaused = false;
+  let pausedElapsed = 0;
+
+  function startTimer() {
+    stopTimer();
+    timerPaused = false;
+    pausedElapsed = 0;
+    updateTimerUI();
+    timerInterval = setInterval(() => {
+      if (!game.won && !game.dead && !timerPaused) {
+        updateTimerUI();
+      }
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    timerPaused = false;
+  }
+
+  function pauseTimer() {
+    if (timerInterval && !timerPaused) {
+      timerPaused = true;
+      pausedElapsed = Date.now() - game.startTime;
+    }
+  }
+
+  function resumeTimer() {
+    if (timerInterval && timerPaused) {
+      game.startTime = Date.now() - pausedElapsed;
+      timerPaused = false;
+      updateTimerUI();
+    }
+  }
+
+  function updateTimerUI() {
+    const elapsedMs = Date.now() - game.startTime;
+    const elapsedSec = Math.max(0, Math.floor(elapsedMs / 1000));
+    const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const ss = String(elapsedSec % 60).padStart(2, '0');
+    const el = document.getElementById("game-timer");
+    if (el) el.textContent = mm + ":" + ss;
+  }
+
   const EASE_IN = "cubic-bezier(0.45, 0, 0.9, 0.55)";
   const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
@@ -480,7 +529,7 @@
   function invalidPiece(p) {
     const el = game.arrowEls.get(p.id);
     AP.audio.play("invalid");
-    if (navigator.vibrate) navigator.vibrate(20);
+    if (window.AP && AP.haptic) AP.haptic("error");
 
     // Count the clear cells ahead of the head before the blocking arrow, so the
     // piece travels that whole distance, slams into the blocker, then recoils.
@@ -530,6 +579,8 @@
 
   function onGameOver() {
     game.dead = true;
+    stopTimer();
+    if (window.AP && AP.haptic) AP.haptic("gameover");
     Player.breakStreak();
     clearProgress();        // failed run — start fresh next time
     setTimeout(() => AP.ui.openPopup("popup-gameover"), 380);
@@ -702,6 +753,7 @@
     AP.ui.refreshGuideButton();
 
     saveProgress();
+    startTimer();
   }
 
   function startLevel(level) {
@@ -719,7 +771,7 @@
     loadLevel(game.level);
   }
   function next() { startLevel(Math.min(game.level + 1, AP.levels.TOTAL_LEVELS + 50)); }
-  function toMenu() { accumulatePlayTime(); AP.ui.closeAllPopups(); AP.ui.showScreen("screen-menu"); }
+  function toMenu() { stopTimer(); accumulatePlayTime(); AP.ui.closeAllPopups(); AP.ui.showScreen("screen-menu"); }
 
   function accumulatePlayTime() {
     if (game.accumPlayStart) {
@@ -812,6 +864,7 @@
   function onVictory() {
     if (game.won) return;   // guard against concurrent slither callbacks
     game.won = true;
+    stopTimer();
     const elapsed = Math.round((Date.now() - game.startTime) / 1000);
     const penalty = (game.usedHintThisLevel ? 1 : 0) + (game.usedUndoThisLevel ? 1 : 0);
     const stars = Math.max(1, 3 - penalty);
@@ -908,8 +961,23 @@
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
 
-    const onHide = () => { accumulatePlayTime(); if (document.getElementById("screen-game").classList.contains("active")) saveProgress(); };
-    document.addEventListener("visibilitychange", () => { if (document.hidden) onHide(); else if (document.getElementById("screen-game").classList.contains("active")) game.accumPlayStart = Date.now(); });
+    const onHide = () => {
+      accumulatePlayTime();
+      if (document.getElementById("screen-game").classList.contains("active")) {
+        saveProgress();
+        pauseTimer();
+      }
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        onHide();
+      } else {
+        if (document.getElementById("screen-game").classList.contains("active")) {
+          game.accumPlayStart = Date.now();
+          resumeTimer();
+        }
+      }
+    });
     window.addEventListener("pagehide", onHide);
 
     // Intro Screen -> Splash Screen -> Main Menu sequence
@@ -924,6 +992,7 @@
 
   AP.game = {
     startLevel, restart, next, toMenu, hint, tap,
+    pauseTimer, resumeTimer,
     get remaining() { return game.remaining; },
     get pieces() { return game.pieces; }
   };

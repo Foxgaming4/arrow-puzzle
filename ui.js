@@ -174,17 +174,35 @@
     node.classList.add("open");
     node.setAttribute("aria-hidden", "false");
     if (sound) AP.audio.play("popup");
+
+    // Pause timer if game screen is active
+    if (document.getElementById("screen-game") && document.getElementById("screen-game").classList.contains("active")) {
+      if (AP.game && AP.game.pauseTimer) AP.game.pauseTimer();
+    }
   }
   function closePopup(id) {
     const node = $(id);
     if (!node) return;
     node.classList.remove("open");
     node.setAttribute("aria-hidden", "true");
+
+    // Resume timer if game screen is active and no more popups are open
+    if (document.getElementById("screen-game") && document.getElementById("screen-game").classList.contains("active")) {
+      const openPopups = document.querySelectorAll(".popup-overlay.open");
+      if (openPopups.length === 0) {
+        if (AP.game && AP.game.resumeTimer) AP.game.resumeTimer();
+      }
+    }
   }
   function closeAllPopups() {
     document.querySelectorAll(".popup-overlay.open").forEach((n) => {
       n.classList.remove("open"); n.setAttribute("aria-hidden", "true");
     });
+
+    // Resume timer if game screen is active (since all popups are now closed)
+    if (document.getElementById("screen-game") && document.getElementById("screen-game").classList.contains("active")) {
+      if (AP.game && AP.game.resumeTimer) AP.game.resumeTimer();
+    }
   }
 
   /* ---------- toast ---------- */

@@ -58,8 +58,12 @@
     osc.type = type;
     osc.frequency.setValueAtTime(freq, now);
     if (glideTo) osc.frequency.exponentialRampToValueAtTime(glideTo, now + dur);
+
+    // Scale SFX volume (increase by 1.8x when bus is sfxGain)
+    const finalGain = (bus === sfxGain) ? Math.min(1.0, gain * 1.8) : gain;
+
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(gain, now + Math.min(0.012, dur * 0.3));
+    g.gain.exponentialRampToValueAtTime(finalGain, now + Math.min(0.012, dur * 0.3));
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
     osc.connect(g).connect(bus);
     osc.start(now);
@@ -79,9 +83,13 @@
     const filt = ctx.createBiquadFilter();
     filt.type = type; filt.frequency.value = freq; filt.Q.value = q;
     if (sweepTo) filt.frequency.exponentialRampToValueAtTime(sweepTo, now + dur);
+
+    // Scale SFX volume (increase by 1.8x when bus is sfxGain)
+    const finalGain = (bus === sfxGain) ? Math.min(1.0, gain * 1.8) : gain;
+
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(gain, now + dur * 0.2);
+    g.gain.exponentialRampToValueAtTime(finalGain, now + dur * 0.2);
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
     src.connect(filt).connect(g).connect(bus);
     src.start(now);
@@ -130,6 +138,11 @@
   };
 
   function play(name) {
+    // Trigger haptic feedback (independent of soundOn settings)
+    try {
+      haptic(name);
+    } catch (e) {}
+
     if (!soundOn) return;
     ensure();
     if (!ctx) return;
@@ -186,5 +199,51 @@
     if (musicOn) startMusic(); else stopMusic();
   }
 
+  // Premium Haptic feedback mapping
+  function haptic(type) {
+    if (!navigator.vibrate) return;
+    switch (type) {
+      case "tap":
+        navigator.vibrate(15);
+        break;
+      case "button":
+      case "coin":
+      case "countup":
+      case "shuffle":
+      case "light":
+        navigator.vibrate(20);
+        break;
+      case "popup":
+      case "medium":
+        navigator.vibrate(35);
+        break;
+      case "remove":
+      case "success":
+        // Arrow slides out successfully: smooth fade vibration
+        navigator.vibrate([25, 30, 15]);
+        break;
+      case "invalid":
+      case "error":
+        // Blocked / invalid arrow tap: deep recoil bump
+        navigator.vibrate([60, 40, 60]);
+        break;
+      case "milestone":
+        // Milestone reached (25%, 50%, 75%): nice rhythmic triple-pulse
+        navigator.vibrate([40, 40, 40]);
+        break;
+      case "victory":
+      case "victoryLarge":
+      case "perfectClear":
+        // Level completion celebration: long energetic sweep
+        navigator.vibrate([80, 50, 80, 50, 150]);
+        break;
+      case "gameover":
+        // Game over: heavy thuds
+        navigator.vibrate([150, 80, 150]);
+        break;
+    }
+  }
+
+  AP.haptic = haptic;
   AP.audio = { unlock, play, toggle, setSound, setMusic, isSoundOn: () => soundOn };
 })(window.AP = window.AP || {});
