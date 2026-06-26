@@ -243,8 +243,10 @@
 
   function migrate(raw) {
     let v = int(raw.saveVersion, 0);
-    while (v < SAVE_VERSION && MIGRATIONS[v]) {
-      raw = MIGRATIONS[v](raw) || raw;
+    while (v < SAVE_VERSION) {
+      if (MIGRATIONS[v]) {
+        raw = MIGRATIONS[v](raw) || raw;
+      }
       v++;
       raw.saveVersion = v;
     }
@@ -350,6 +352,7 @@
     // Record a completed level: stars, time and move bests, streaks, totals.
     // Returns { firstClear } so callers can react to a brand-new clear.
     completeLevel(level, info, rewards) {
+      level = Math.max(1, int(level, 1));
       const stars = Math.max(0, int(info.stars, 0));
       const timeSec = Math.max(0, num(info.timeSec, 0));
       const moves = Math.max(0, int(info.moves, 0));

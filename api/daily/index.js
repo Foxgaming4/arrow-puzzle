@@ -1,11 +1,11 @@
 /* ===================================================================
    GET /api/daily — Returns today's Daily Challenge puzzle config.
 
-   The puzzle is deterministic: the seed is derived from the UTC date
-   so every player worldwide gets the exact same board each day.
+   Supports client-local timezone dateKey (e.g. ?dateKey=YYYYMMDD).
+   If absent, defaults to server UTC dateKey.
    =================================================================== */
 
-const { kv } = require("./_store");
+const db = require("./_db");
 
 function todayKey() {
   const d = new Date();
@@ -20,7 +20,13 @@ function msUntilMidnightUTC() {
 
 // Difficulty rotates by day of week (0=Sun ... 6=Sat)
 function getDailyConfig(dateKey) {
-  const dow = new Date().getUTCDay();
+  // Parse year, month, day from YYYYMMDD to get the correct day of week
+  const year = Math.floor(dateKey / 10000);
+  const month = Math.floor((dateKey % 10000) / 100) - 1;
+  const day = dateKey % 100;
+  const dateObj = new Date(year, month, day);
+  const dow = isNaN(dateObj.getTime()) ? new Date().getDay() : dateObj.getDay();
+
   const SHAPES = ["full", "diamond", "circle", "heart", "star", "triangle", "hexagon", "apple", "plus"];
 
   let size, maxLen, turnProb;
@@ -56,21 +62,15 @@ module.exports = async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const dateKey = todayKey();
+    const reqKey = req.query.dateKey ? Number(req.query.dateKey) : null;
+    const dateKey = (reqKey && !isNaN(reqKey)) ? reqKey : todayKey();
     const config = getDailyConfig(dateKey);
-    const remainingMs = msUntilMidnightUTC();
-
-    // Get total players for today (if KV is available)
-    let totalPlayers = 0;
-    try {
-      totalPlayers = await kv.zcard("daily:" + dateKey + ":lb") || 0;
-    } catch (e) {
-      // KV not configured yet — still return the puzzle
-    }
+    
+    // Get total players for today
+    const totalPlayers = await db.getPlayerCount(dateKey);
 
     return res.status(200).json({
       ...config,
-      remainingMs,
       totalPlayers,
       rewards: {
         completion: 150,

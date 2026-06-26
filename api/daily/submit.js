@@ -1,25 +1,10 @@
 /* ===================================================================
    POST /api/daily/submit — Validates and records a Daily Challenge score.
 
-   Anti-cheat:
-     • Rejects impossible times (< 3 seconds)
-     • Rejects wrong/stale puzzleId
-     • Rejects duplicate submissions (one per player per day)
-     • Stores scores in KV sorted set for leaderboard
+   Interfaces with daily_leaderboard in Supabase via _db.js.
    =================================================================== */
 
-const { kv } = require("./_store");
-
-function todayKey() {
-  const d = new Date();
-  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-}
-
-function msUntilMidnightUTC() {
-  const now = new Date();
-  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-  return tomorrow.getTime() - now.getTime();
-}
+const db = require("./_db");
 
 const MIN_TIME_MS = 3000; // Minimum plausible completion time
 
@@ -41,75 +26,51 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "Invalid or impossible completion time" });
     }
 
-    // Verify puzzle ID matches today
-    const dateKey = todayKey();
-    const expectedPuzzleId = "daily-" + dateKey;
-    if (puzzleId !== expectedPuzzleId) {
-      return res.status(400).json({ error: "Invalid or expired puzzle ID" });
+    // Verify and parse puzzle ID
+    const match = /^daily-(\d{8})$/.exec(puzzleId);
+    if (!match) {
+      return res.status(400).json({ error: "Invalid puzzle ID format" });
     }
-
-    const lbKey = "daily:" + dateKey + ":lb";
-    const dataKey = "daily:" + dateKey + ":data";
+    const dateKey = Number(match[1]);
 
     // Check for duplicate submission
-    const existing = await kv.zscore(lbKey, playerId);
-    if (existing !== null && existing !== undefined) {
-      const rank = await kv.zrank(lbKey, playerId) ?? 0;
-      const total = await kv.zcard(lbKey) || 0;
+    const existingTime = await db.getExistingSubmission(dateKey, playerId);
+    if (existingTime !== null) {
+      // Re-fetch rankings for already submitted score
+      const lb = await db.getLeaderboard(dateKey, playerId);
       return res.status(409).json({
         error: "Already submitted today",
-        rank: rank + 1,
-        totalPlayers: total,
-        completionMs: existing,
+        rank: lb.playerRank,
+        totalPlayers: lb.totalPlayers,
+        completionMs: existingTime,
       });
     }
 
-    // Store the score
-    await kv.zadd(lbKey, { score: completionMs, member: playerId });
-
-    // Store player metadata
-    await kv.hset(dataKey, {
-      [playerId]: JSON.stringify({
-        nickname: nickname.substring(0, 16),
-        completionMs,
-        submittedAt: Date.now(),
-      }),
-    });
-
-    // Set expiry (no-op for in-memory store)
-    await kv.expire(lbKey, 90000);
-    await kv.expire(dataKey, 90000);
-
-    // Get rank and total
-    const rank = await kv.zrank(lbKey, playerId) ?? 0;
-    const total = await kv.zcard(lbKey) || 0;
+    // Submit score
+    const result = await db.submitScore({ playerId, nickname, completionMs, dateKey });
 
     // Calculate coins earned
     let coinsEarned = 150; // base completion
-    const percentile = total > 0 ? (rank + 1) / total : 1;
+    const percentile = result.totalPlayers > 0 ? result.rank / result.totalPlayers : 1;
     if (percentile <= 0.10) coinsEarned += 100;
     else if (percentile <= 0.25) coinsEarned += 50;
     else if (percentile <= 0.50) coinsEarned += 25;
 
-    // Check personal best
-    const pbKey = "daily:pb:" + playerId;
-    const personalBest = await kv.get(pbKey);
-    const isNewPB = personalBest === null || completionMs < personalBest;
-    if (isNewPB) {
-      await kv.set(pbKey, completionMs);
-    }
+    const isNewPB = result.personalBest === completionMs;
 
     return res.status(200).json({
-      rank: rank + 1,
-      totalPlayers: total,
+      rank: result.rank,
+      totalPlayers: result.totalPlayers,
       completionMs,
-      personalBest: isNewPB ? completionMs : Number(personalBest),
+      personalBest: result.personalBest,
       isNewPB,
       coinsEarned,
-      remainingMs: msUntilMidnightUTC(),
     });
   } catch (err) {
     console.error("POST /api/daily/submit error:", err);
+    if (err.message === "Duplicate submission") {
+      return res.status(409).json({ error: "Already submitted today" });
+    }
     return res.status(500).json({ error: "Internal server error" });
   }
 };

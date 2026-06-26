@@ -76,9 +76,14 @@
 
   async function fetchDailyConfig() {
     try {
-      const resp = await fetch(API_BASE);
+      const d = new Date();
+      const dateKey = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      const resp = await fetch(API_BASE + "?dateKey=" + dateKey);
       if (!resp.ok) throw new Error("API " + resp.status);
       dailyConfig = await resp.json();
+      // Calculate remainingMs locally relative to local midnight
+      const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+      dailyConfig.remainingMs = tomorrow.getTime() - d.getTime();
       return dailyConfig;
     } catch (e) {
       console.warn("Daily API unavailable, using local fallback:", e.message);
@@ -91,8 +96,8 @@
   // Client-side fallback when API is unreachable (local dev / no KV)
   function generateLocalConfig() {
     const d = new Date();
-    const dateKey = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-    const dow = d.getUTCDay();
+    const dateKey = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    const dow = d.getDay();
     const SHAPES = ["full","diamond","circle","heart","star","triangle","hexagon","apple","plus"];
     const difficulties = ["Hard","Hard","Expert","Expert","Master","Master","Extreme"];
 
@@ -102,7 +107,7 @@
     else if (dow <= 5) { size = 18; maxLen = 6; turnProb = 0.65; }
     else               { size = 20; maxLen = 7; turnProb = 0.7; }
 
-    const tomorrow = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+    const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
     return {
       puzzleId: "daily-" + dateKey,
       seed: (dateKey * 2654435761) >>> 0,
@@ -118,7 +123,7 @@
 
   function todayPuzzleId() {
     const d = new Date();
-    const dateKey = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+    const dateKey = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     return "daily-" + dateKey;
   }
 
@@ -466,7 +471,9 @@
     AP.ui.openPopup("popup-leaderboard", true);
 
     try {
-      const resp = await fetch(API_BASE + "/leaderboard?playerId=" + encodeURIComponent(state.playerId));
+      const d = new Date();
+      const dateKey = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+      const resp = await fetch(API_BASE + "/leaderboard?playerId=" + encodeURIComponent(state.playerId) + "&dateKey=" + dateKey);
       if (!resp.ok) throw new Error("API " + resp.status);
       const data = await resp.json();
       renderLeaderboard(data);
