@@ -137,7 +137,7 @@
 
   function cache() {
     [
-      "screen-splash", "screen-menu", "screen-levels", "screen-game", "screen-shop", "screen-intro",
+      "screen-splash", "screen-menu", "screen-levels", "screen-game", "screen-shop", "screen-intro", "screen-daily",
       "board", "board-wrap", "remaining-count", "game-level-label", "hint-count", "hearts",
       "btn-sound", "btn-menu-sound", "btn-guide", "btn-zoom", "levels-grid", "toast",
       // settings inputs
@@ -159,7 +159,7 @@
   }
 
   /* ---------- screen routing ---------- */
-  const SCREENS = ["screen-splash", "screen-menu", "screen-levels", "screen-game", "screen-shop", "screen-intro"];
+  const SCREENS = ["screen-splash", "screen-menu", "screen-levels", "screen-game", "screen-shop", "screen-intro", "screen-daily"];
   function showScreen(id) {
     SCREENS.forEach((s) => el[s] && el[s].classList.toggle("active", s === id));
     if (id === "screen-menu" || id === "screen-levels" || id === "screen-shop") {
@@ -804,6 +804,7 @@
   function bindEvents() {
     // Menu
     $("btn-play").addEventListener("click", () => { AP.audio.play("button"); AP.game.startLevel(Player.story.current); });
+    $("btn-daily").addEventListener("click", () => { AP.audio.play("button"); AP.daily.openDaily(); });
     $("btn-levels").addEventListener("click", () => { AP.audio.play("button"); buildLevels(); showScreen("screen-levels"); });
     $("btn-shop").addEventListener("click", () => { AP.audio.play("button"); renderShop(); showScreen("screen-shop"); });
     $("btn-stats").addEventListener("click", () => { AP.audio.play("button"); renderStats(); openPopup("popup-stats"); });
@@ -818,6 +819,38 @@
     $("tab-items").addEventListener("click", () => { AP.audio.play("button"); switchShopTab("items"); });
     $("tab-skins").addEventListener("click", () => { AP.audio.play("button"); switchShopTab("skins"); });
     $("btn-insufficient-close").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-insufficient"); });
+
+    // Daily Challenge
+    $("btn-daily-back").addEventListener("click", () => { AP.audio.play("button"); AP.daily.exitDaily(); showScreen("screen-menu"); });
+    $("btn-daily-play").addEventListener("click", () => { AP.audio.play("button"); AP.daily.play(); });
+    $("btn-daily-leaderboard").addEventListener("click", () => { AP.audio.play("button"); AP.daily.openLeaderboard(); });
+
+    // Nickname Popup
+    $("btn-nickname-save").addEventListener("click", () => {
+      AP.audio.play("button");
+      const input = $("nickname-input");
+      const err = $("nickname-error");
+      const res = AP.daily.saveNickname(input.value);
+      if (res.ok) {
+        closePopup("popup-nickname");
+        AP.daily.openDaily();
+      } else {
+        err.textContent = res.error;
+        input.classList.add("error");
+      }
+    });
+    $("nickname-input").addEventListener("input", () => {
+      $("nickname-input").classList.remove("error");
+      $("nickname-error").textContent = "";
+    });
+    $("btn-nickname-close").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-nickname"); });
+
+    // Daily Victory Popup
+    $("btn-dv-leaderboard").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-daily-victory"); AP.daily.openLeaderboard(); });
+    $("btn-dv-menu").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-daily-victory"); AP.daily.exitDaily(); showScreen("screen-menu"); });
+
+    // Leaderboard
+    $("btn-lb-close").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-leaderboard"); });
 
     // Game top bar
     $("btn-back").addEventListener("click", () => { AP.audio.play("button"); AP.game.toMenu(); });
@@ -891,8 +924,8 @@
     $("btn-gameover-retry").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-gameover"); AP.game.restart(); });
     $("btn-gameover-menu").addEventListener("click", () => { AP.audio.play("button"); closePopup("popup-gameover"); AP.game.toMenu(); });
 
-    // Click backdrop to dismiss non-blocking popups (settings/stats/howto/insufficient)
-    ["popup-settings", "popup-stats", "popup-howto", "popup-reset", "popup-insufficient"].forEach((id) => {
+    // Click backdrop to dismiss non-blocking popups (settings/stats/howto/insufficient/nickname/leaderboard)
+    ["popup-settings", "popup-stats", "popup-howto", "popup-reset", "popup-insufficient", "popup-nickname", "popup-leaderboard"].forEach((id) => {
       $(id).addEventListener("click", (e) => { if (e.target.id === id) closePopup(id); });
     });
   }

@@ -574,7 +574,9 @@
     game.hearts = Math.max(0, game.hearts - 1);
     AP.ui.setHearts(game.hearts, game.maxHearts);
     if (game.hearts <= 0) { onGameOver(); return; }
-    saveProgress();
+    if (!game.isDailyModeFlag) {
+      saveProgress();
+    }
   }
 
   function onGameOver() {
@@ -582,6 +584,11 @@
     stopTimer();
     if (window.AP && AP.haptic) AP.haptic("gameover");
     Player.breakStreak();
+    if (game.isDailyModeFlag) {
+      AP.daily.onGameOver();
+      setTimeout(() => AP.ui.openPopup("popup-gameover"), 380);
+      return;
+    }
     clearProgress();        // failed run — start fresh next time
     setTimeout(() => AP.ui.openPopup("popup-gameover"), 380);
   }
@@ -593,6 +600,7 @@
 
   /* ---------- undo ---------- */
   function undo() {
+    if (game.isDailyModeFlag) return;
     if (game.busy || game.dead || !game.undoStack.length) return;
     AP.audio.play("button");
     clearWrong();
@@ -627,6 +635,7 @@
 
   /* ---------- hint ---------- */
   function hint() {
+    if (game.isDailyModeFlag) return;
     if (game.busy) return;
     if (game.hintsLeft <= 0) { AP.ui.toast("No hints left"); AP.audio.play("invalid"); return; }
     const p = findRemovable();
@@ -756,6 +765,49 @@
     startTimer();
   }
 
+  function loadDailyLevel(cfg) {
+    game.level = -1;
+    game.N = cfg.size;
+    game.maxHearts = 3;
+    game.won = false;
+    game.dead = false;
+    game.mask = AP.levels.buildMask(cfg.shape, cfg.size);
+    game.triggeredMilestones = new Set();
+    game.isDailyModeFlag = true;
+
+    // fresh deterministic board using seed
+    const { occ, pieces } = generate(cfg.size, game.mask, makeRNG(cfg.seed), cfg.maxLen, cfg.turnProb);
+    game.occ = occ;
+    game.pieces = new Map(pieces.map((p) => [p.id, p]));
+    game.undoStack = [];
+    game.hintsLeft = 0;
+    game.hearts = 3;
+
+    game.moves = 0;
+    game.usedHintThisLevel = false;
+    game.usedUndoThisLevel = false;
+    game.wrongTaps = 0;
+    game.remaining = pieces.length;
+    game.initialPiecesCount = pieces.length;
+    game.startTime = Date.now();
+
+    buildBoard(cfg.size);
+    AP.ui.setLevelLabel("Daily Challenge");
+    AP.ui.setRemaining(game.remaining);
+    AP.ui.setHintCount(0);
+    AP.ui.setHearts(game.hearts, game.maxHearts);
+    AP.ui.setUndoEnabled(false);
+
+    // Zoom: reset state and show button only for large boards
+    AP.ui.resetZoom();
+    AP.ui.setZoomVisible(cfg.size >= 10);
+
+    // Sync guide button active state
+    AP.ui.refreshGuideButton();
+
+    stopTimer(); // Ensure normal level timer does not tick
+  }
+
   function startLevel(level) {
     const target = Math.min(level, Player.story.highestUnlocked);
     Player.setCurrentLevel(target);
@@ -766,12 +818,28 @@
     game.accumPlayStart = Date.now();
   }
   function restart() {
+    if (game.isDailyModeFlag) {
+      AP.ui.closeAllPopups();
+      AP.daily.play();
+      return;
+    }
     Player.recordRestart();
     AP.ui.closeAllPopups();
     loadLevel(game.level);
   }
   function next() { startLevel(Math.min(game.level + 1, AP.levels.TOTAL_LEVELS + 50)); }
-  function toMenu() { stopTimer(); accumulatePlayTime(); AP.ui.closeAllPopups(); AP.ui.showScreen("screen-menu"); }
+  function toMenu() {
+    stopTimer();
+    accumulatePlayTime();
+    AP.ui.closeAllPopups();
+    if (game.isDailyModeFlag) {
+      AP.daily.exitDaily();
+      game.isDailyModeFlag = false;
+      AP.ui.showScreen("screen-daily");
+    } else {
+      AP.ui.showScreen("screen-menu");
+    }
+  }
 
   function accumulatePlayTime() {
     if (game.accumPlayStart) {
@@ -865,6 +933,16 @@
     if (game.won) return;   // guard against concurrent slither callbacks
     game.won = true;
     stopTimer();
+
+    if (game.isDailyModeFlag) {
+      const elapsed = Date.now() - game.startTime;
+      AP.daily.onVictory(elapsed);
+      playOutro(() => {
+        AP.effects.confetti();
+      });
+      return;
+    }
+
     const elapsed = Math.round((Date.now() - game.startTime) / 1000);
     const penalty = (game.usedHintThisLevel ? 1 : 0) + (game.usedUndoThisLevel ? 1 : 0);
     const stars = Math.max(1, 3 - penalty);
@@ -993,6 +1071,8 @@
   AP.game = {
     startLevel, restart, next, toMenu, hint, tap,
     pauseTimer, resumeTimer,
+    loadDailyLevel,
+    isDailyMode: () => !!game.isDailyModeFlag,
     get remaining() { return game.remaining; },
     get pieces() { return game.pieces; }
   };
